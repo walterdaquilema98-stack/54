@@ -1,0 +1,1658 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ISTU Vida Nueva — Control Neumático</title>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<!-- QR Code Generator -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- QR Code Generator -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Exo+2:wght@300;400;600;700;900&family=Share+Tech+Mono&display=swap');
+
+/* ══════════════════════════════════════════
+   VARIABLES & RESET
+══════════════════════════════════════════ */
+:root {
+  --bg:        #04070f;
+  --bg2:       #060d1a;
+  --panel:     #070f1e;
+  --card:      #080e1c;
+  --border:    #0e1e3a;
+
+  --gold:      #d4a017;
+  --gold2:     #f5c842;
+  --gold-l:    rgba(212,160,23,0.18);
+
+  --seq1:      #ff6b35;
+  --seq1-d:    #c94e18;
+  --seq1-l:    rgba(255,107,53,0.15);
+
+  --seq2:      #06d6a0;
+  --seq2-d:    #049e76;
+  --seq2-l:    rgba(6,214,160,0.15);
+
+  --seq3:      #a855f7;
+  --seq3-d:    #7c3aed;
+  --seq3-l:    rgba(168,85,247,0.15);
+
+  --seq4:      #f72585;
+  --seq4-d:    #c41066;
+  --seq4-l:    rgba(247,37,133,0.15);
+
+  --cyan:      #00d4ff;
+  --blue:      #3b82f6;
+  --green:     #22c55e;
+  --red:       #ef4444;
+  --text:      #cce0ff;
+  --dim:       #1e3554;
+  --dim2:      #2a4a70;
+}
+
+*{ margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  font-family: 'Exo 2', sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Animated background ── */
+body::before {
+  content:'';
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(ellipse 80% 40% at 50% 0%,   rgba(212,160,23,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 0% 100%,  rgba(255,107,53,0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 100%,rgba(168,85,247,0.05) 0%, transparent 60%);
+}
+
+/* Scanlines */
+body::after {
+  content:'';
+  position:fixed; inset:0; z-index:1; pointer-events:none;
+  background: repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.03) 3px,rgba(0,0,0,0.03) 4px);
+}
+
+/* ══════════════════════════════════════════
+   HEADER
+══════════════════════════════════════════ */
+header {
+  position: relative; z-index:10;
+  background: linear-gradient(180deg, #020610 0%, rgba(4,7,15,0.9) 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 20px 16px;
+  text-align: center;
+  overflow: hidden;
+}
+
+header::before {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:3px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--seq1) 15%, var(--gold2) 30%, var(--seq2) 45%,
+    var(--seq3) 60%, var(--seq4) 75%, var(--gold2) 90%,
+    transparent 100%);
+  animation: headerLine 4s ease-in-out infinite alternate;
+}
+
+@keyframes headerLine {
+  from { opacity:.6; }
+  to   { opacity:1; }
+}
+
+/* SELLO */
+.seal-wrap {
+  position: relative;
+  width: 100px; height: 100px;
+  margin: 0 auto 14px;
+}
+
+.seal-ring {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+  box-shadow: 0 0 20px rgba(212,160,23,0.4), inset 0 0 20px rgba(212,160,23,0.06);
+  animation: spin 25s linear infinite;
+}
+
+.seal-ring-inner {
+  position: absolute; inset: 12px;
+  border-radius: 50%;
+  border: 1px dashed rgba(212,160,23,0.35);
+  animation: spin 25s linear infinite reverse;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.seal-center {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(212,160,23,0.12) 0%, transparent 70%);
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.seal-letters {
+  font-family: 'Cinzel', serif;
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: var(--gold2);
+  text-shadow: 0 0 20px rgba(212,160,23,0.7);
+  line-height: 1;
+}
+
+.seal-sub {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.38rem;
+  letter-spacing: 2px;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+
+/* Corner ornaments on seal */
+.seal-dot {
+  position: absolute;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--gold2);
+  box-shadow: 0 0 8px var(--gold);
+}
+.seal-dot:nth-child(1){ top:3px;   left:50%; transform:translateX(-50%); }
+.seal-dot:nth-child(2){ bottom:3px;left:50%; transform:translateX(-50%); }
+.seal-dot:nth-child(3){ left:3px;  top:50%;  transform:translateY(-50%); }
+.seal-dot:nth-child(4){ right:3px; top:50%;  transform:translateY(-50%); }
+.seal-dot:nth-child(5){ top:14px;  left:14px; }
+.seal-dot:nth-child(6){ top:14px;  right:14px; }
+.seal-dot:nth-child(7){ bottom:14px; left:14px; }
+.seal-dot:nth-child(8){ bottom:14px; right:14px; }
+
+.h-title {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(1rem, 4vw, 1.9rem);
+  font-weight: 900;
+  letter-spacing: 2px;
+  line-height: 1.25;
+  color: var(--gold2);
+  text-shadow: 0 0 30px rgba(212,160,23,0.5);
+  margin-bottom: 6px;
+}
+
+.h-sub {
+  font-size: 0.7rem;
+  letter-spacing: 5px;
+  color: var(--gold);
+  text-transform: uppercase;
+  opacity: 0.75;
+  font-family: 'Cinzel', serif;
+}
+
+.h-divider {
+  width: 280px; height: 1px; margin: 12px auto;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+
+/* ── CLOCK ── */
+.clock-strip {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.clock-item {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 7px 14px;
+}
+
+.clock-icon { font-size: 0.9rem; }
+
+.clock-val {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 1rem;
+  color: var(--cyan);
+  text-shadow: 0 0 12px rgba(0,212,255,0.5);
+  letter-spacing: 2px;
+}
+
+.clock-day {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--gold2);
+  text-shadow: 0 0 12px rgba(212,160,23,0.4);
+  letter-spacing: 1px;
+}
+
+/* ── Connection badge ── */
+.conn-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 10px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 2px;
+}
+
+.conn-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--dim);
+  transition: all 0.3s;
+}
+.conn-dot.online { background: var(--green); box-shadow: 0 0 8px var(--green); animation: blink 2s ease-in-out infinite; }
+.conn-dot.offline { background: var(--red); }
+
+@keyframes blink {
+  0%,100%{ opacity:1; }
+  50%{ opacity:0.5; }
+}
+
+/* ══════════════════════════════════════════
+   MAIN CONTENT
+══════════════════════════════════════════ */
+main {
+  position: relative; z-index:10;
+  max-width: 860px; margin: 0 auto;
+  padding: 24px 16px 40px;
+}
+
+/* ── Relay Status Bar ── */
+.relay-bar-title {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 5px;
+  color: var(--dim2);
+  text-align: center;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.relay-bar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-bottom: 28px;
+}
+
+.rled {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 4px 8px;
+  text-align: center;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.rled-name {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.5rem;
+  color: var(--dim2);
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+
+.rled-light {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  margin: 0 auto 6px;
+  background: #060f20;
+  border: 2px solid var(--border);
+  transition: all 0.2s;
+}
+
+.rled-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.45rem;
+  color: var(--dim);
+  transition: color 0.2s;
+}
+
+.rled.on { border-color: rgba(34,197,94,0.5); background: rgba(34,197,94,0.04); }
+.rled.on .rled-light { background: var(--green); border-color: var(--green); box-shadow: 0 0 14px rgba(34,197,94,0.7); }
+.rled.on .rled-label { color: var(--green); }
+.rled.on .rled-name  { color: rgba(34,197,94,0.7); }
+
+/* ── Section title ── */
+.sec-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  letter-spacing: 4px;
+  color: var(--dim2);
+  text-align: center;
+  margin-bottom: 18px;
+  text-transform: uppercase;
+}
+
+/* ══════════════════════════════════════════
+   SEQUENCE CARDS
+══════════════════════════════════════════ */
+.seq-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.seq-card {
+  border-radius: 8px;
+  padding: 20px 16px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.seq-card:hover:not(.disabled) { transform: translateY(-2px); }
+
+.seq-card::before {
+  content:'';
+  position: absolute; top:0; left:0; right:0; height:3px;
+}
+
+.seq-card.s1 { background: var(--seq1-l); border: 1px solid rgba(255,107,53,0.3); }
+.seq-card.s1::before { background: linear-gradient(90deg, transparent, var(--seq1), transparent); }
+
+.seq-card.s2 { background: var(--seq2-l); border: 1px solid rgba(6,214,160,0.3); }
+.seq-card.s2::before { background: linear-gradient(90deg, transparent, var(--seq2), transparent); }
+
+.seq-card.s3 { background: var(--seq3-l); border: 1px solid rgba(168,85,247,0.3); }
+.seq-card.s3::before { background: linear-gradient(90deg, transparent, var(--seq3), transparent); }
+
+.seq-card.s4 { background: var(--seq4-l); border: 1px solid rgba(247,37,133,0.3); }
+.seq-card.s4::before { background: linear-gradient(90deg, transparent, var(--seq4), transparent); }
+
+.seq-card.running {
+  animation: cardPulse 1s ease-in-out infinite;
+}
+@keyframes cardPulse {
+  0%,100%{ box-shadow: 0 0 0 0 transparent; }
+  50%    { box-shadow: 0 0 0 4px currentColor; }
+}
+
+.seq-num {
+  font-family: 'Cinzel', serif;
+  font-size: 2.8rem;
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.s1 .seq-num { color: var(--seq1); text-shadow: 0 0 20px rgba(255,107,53,0.4); }
+.s2 .seq-num { color: var(--seq2); text-shadow: 0 0 20px rgba(6,214,160,0.4); }
+.s3 .seq-num { color: var(--seq3); text-shadow: 0 0 20px rgba(168,85,247,0.4); }
+.s4 .seq-num { color: var(--seq4); text-shadow: 0 0 20px rgba(247,37,133,0.4); }
+
+.seq-name {
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.s1 .seq-name { color: var(--seq1); }
+.s2 .seq-name { color: var(--seq2); }
+.s3 .seq-name { color: var(--seq3); }
+.s4 .seq-name { color: var(--seq4); }
+
+.seq-steps {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--dim2);
+  line-height: 1.9;
+  margin-bottom: 14px;
+  min-height: 70px;
+}
+
+.step-hl { color: var(--text); font-weight: 600; }
+
+/* Step flow diagram */
+.seq-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 14px;
+  align-items: center;
+}
+
+.flow-block {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.55rem;
+  padding: 3px 7px;
+  border-radius: 3px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.s1 .flow-block { background: rgba(255,107,53,0.15); color: var(--seq1); border: 1px solid rgba(255,107,53,0.3); }
+.s2 .flow-block { background: rgba(6,214,160,0.15);  color: var(--seq2); border: 1px solid rgba(6,214,160,0.3); }
+.s3 .flow-block { background: rgba(168,85,247,0.15); color: var(--seq3); border: 1px solid rgba(168,85,247,0.3); }
+.s4 .flow-block { background: rgba(247,37,133,0.15); color: var(--seq4); border: 1px solid rgba(247,37,133,0.3); }
+
+.flow-arrow {
+  font-size: 0.65rem;
+  color: var(--dim2);
+}
+
+.flow-sep {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.55rem;
+  color: var(--gold2);
+  padding: 2px 4px;
+}
+
+/* Sequence button */
+.btn-seq {
+  width: 100%;
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 13px 10px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-seq::after {
+  content:'';
+  position:absolute; inset:0;
+  background: rgba(255,255,255,0.12);
+  opacity:0;
+  transition: opacity 0.15s;
+}
+.btn-seq:active:not(:disabled)::after { opacity:1; }
+
+.btn-seq:disabled { opacity:0.3; cursor:not-allowed; }
+
+.btn-seq.s1 { background: linear-gradient(135deg, var(--seq1-d), var(--seq1)); color:#fff;
+  box-shadow: 0 4px 20px rgba(255,107,53,0.35); }
+.btn-seq.s1:hover:not(:disabled) { box-shadow: 0 4px 30px rgba(255,107,53,0.6); transform:translateY(-1px); }
+
+.btn-seq.s2 { background: linear-gradient(135deg, var(--seq2-d), var(--seq2)); color:#001a12;
+  box-shadow: 0 4px 20px rgba(6,214,160,0.35); }
+.btn-seq.s2:hover:not(:disabled) { box-shadow: 0 4px 30px rgba(6,214,160,0.6); transform:translateY(-1px); }
+
+.btn-seq.s3 { background: linear-gradient(135deg, var(--seq3-d), var(--seq3)); color:#fff;
+  box-shadow: 0 4px 20px rgba(168,85,247,0.35); }
+.btn-seq.s3:hover:not(:disabled) { box-shadow: 0 4px 30px rgba(168,85,247,0.6); transform:translateY(-1px); }
+
+.btn-seq.s4 { background: linear-gradient(135deg, var(--seq4-d), var(--seq4)); color:#fff;
+  box-shadow: 0 4px 20px rgba(247,37,133,0.35); }
+.btn-seq.s4:hover:not(:disabled) { box-shadow: 0 4px 30px rgba(247,37,133,0.6); transform:translateY(-1px); }
+
+/* ── STOP ── */
+.stop-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.btn-util {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 3px;
+  padding: 13px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+.btn-stop { border-color: rgba(239,68,68,0.4); color: var(--red); }
+.btn-stop:hover:not(:disabled) { border-color: var(--red); box-shadow: 0 0 18px rgba(239,68,68,0.3); }
+.btn-util:disabled { opacity:0.3; cursor:not-allowed; }
+.btn-reset:hover { border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 15px rgba(0,212,255,0.2); }
+
+/* ── Progress + Status ── */
+.status-row {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 14px;
+}
+.s-indicator {
+  display: flex; align-items: center; gap: 8px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+.s-dot { width:8px; height:8px; border-radius:50%; background:var(--dim); transition:all 0.2s; }
+.s-dot.active { animation:blink 1s ease-in-out infinite; }
+.s-dot.s1-c { background:var(--seq1); box-shadow:0 0 8px var(--seq1); }
+.s-dot.s2-c { background:var(--seq2); box-shadow:0 0 8px var(--seq2); }
+.s-dot.s3-c { background:var(--seq3); box-shadow:0 0 8px var(--seq3); }
+.s-dot.s4-c { background:var(--seq4); box-shadow:0 0 8px var(--seq4); }
+.prog-wrap { flex:1; height:3px; background:var(--border); border-radius:2px; overflow:hidden; }
+.prog-fill { height:100%; width:0%; border-radius:2px; transition: width 0.3s; }
+.step-txt {
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.58rem;
+  color:var(--dim2);
+  letter-spacing:1px;
+  white-space:nowrap;
+}
+
+/* ── LOG ── */
+.log-box {
+  background: #030810;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 12px 14px;
+  height: 100px;
+  overflow-y: auto;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.62rem;
+  line-height: 2;
+}
+.log-box::-webkit-scrollbar { width: 3px; }
+.log-box::-webkit-scrollbar-thumb { background: var(--border); }
+.le      { color: var(--dim2); }
+.le.s1c  { color: var(--seq1); }
+.le.s2c  { color: var(--seq2); }
+.le.s3c  { color: var(--seq3); }
+.le.s4c  { color: var(--seq4); }
+.le.sys  { color: var(--cyan); }
+.le.err  { color: var(--red); }
+.le.ok   { color: var(--green); }
+
+/* ── Footer ── */
+footer {
+  position:relative; z-index:10;
+  text-align:center;
+  padding: 16px;
+  border-top: 1px solid var(--border);
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.55rem;
+  color:var(--dim);
+  letter-spacing:3px;
+  text-transform:uppercase;
+}
+
+@media(max-width:560px){
+  .seq-grid { grid-template-columns: 1fr; }
+  .relay-bar { grid-template-columns: repeat(4,1fr); }
+  .clock-strip { gap:10px; }
+  .clock-val { font-size:0.85rem; }
+}
+
+/* ══════════════════════════════════════════
+   QR SECTION
+══════════════════════════════════════════ */
+.qr-section {
+  position: relative; z-index:10;
+  max-width: 860px; margin: 0 auto;
+  padding: 0 16px 36px;
+}
+
+.qr-card {
+  background: linear-gradient(135deg, #07111f 0%, #060d1a 100%);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px 24px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.qr-card::before {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:2px;
+  background: linear-gradient(90deg, transparent, var(--gold2), var(--cyan), var(--gold2), transparent);
+  animation: headerLine 3s ease-in-out infinite alternate;
+}
+
+.qr-card::after {
+  content:'';
+  position:absolute; inset:0; pointer-events:none;
+  background: radial-gradient(ellipse 60% 80% at 10% 50%, rgba(212,160,23,0.04) 0%, transparent 60%);
+}
+
+.qr-box-wrap {
+  flex-shrink: 0;
+  position: relative;
+}
+
+.qr-frame {
+  padding: 10px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 0 30px rgba(212,160,23,0.25), 0 0 60px rgba(0,212,255,0.1);
+  position: relative;
+}
+
+/* Corner decorations on QR frame */
+.qr-corner {
+  position: absolute;
+  width: 16px; height: 16px;
+  border-color: var(--gold2);
+  border-style: solid;
+}
+.qr-corner.tl { top:-6px; left:-6px; border-width:3px 0 0 3px; border-radius:3px 0 0 0; }
+.qr-corner.tr { top:-6px; right:-6px; border-width:3px 3px 0 0; border-radius:0 3px 0 0; }
+.qr-corner.bl { bottom:-6px; left:-6px; border-width:0 0 3px 3px; border-radius:0 0 0 3px; }
+.qr-corner.br { bottom:-6px; right:-6px; border-width:0 3px 3px 0; border-radius:0 0 3px 0; }
+
+#qrCanvas { display:block; }
+
+.qr-badge {
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--gold2);
+  color: #000;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 3px 10px;
+  border-radius: 10px;
+  white-space: nowrap;
+  box-shadow: 0 0 12px rgba(212,160,23,0.5);
+}
+
+.qr-info {
+  flex: 1;
+}
+
+.qr-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: var(--gold2);
+  text-shadow: 0 0 20px rgba(212,160,23,0.4);
+  margin-bottom: 8px;
+  letter-spacing: 2px;
+}
+
+.qr-desc {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 0.8rem;
+  color: var(--text);
+  line-height: 1.7;
+  margin-bottom: 14px;
+  opacity: 0.85;
+}
+
+.qr-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.qr-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--dim2);
+  letter-spacing: 1px;
+}
+
+.qr-step-num {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.qr-step:nth-child(1) .qr-step-num { background: rgba(255,107,53,0.2); color: var(--seq1); border:1px solid rgba(255,107,53,0.4); }
+.qr-step:nth-child(2) .qr-step-num { background: rgba(212,160,23,0.2); color: var(--gold2); border:1px solid rgba(212,160,23,0.4); }
+.qr-step:nth-child(3) .qr-step-num { background: rgba(0,212,255,0.2); color: var(--cyan); border:1px solid rgba(0,212,255,0.4); }
+.qr-step:nth-child(4) .qr-step-num { background: rgba(34,197,94,0.2); color: var(--green); border:1px solid rgba(34,197,94,0.4); }
+
+.qr-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.qr-meta-chip {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.58rem;
+  padding: 5px 12px;
+  border-radius: 20px;
+  letter-spacing: 1px;
+}
+
+.chip-red   { background: rgba(239,68,68,0.12); color: var(--red); border:1px solid rgba(239,68,68,0.3); }
+.chip-green { background: rgba(34,197,94,0.12); color: var(--green); border:1px solid rgba(34,197,94,0.3); }
+.chip-cyan  { background: rgba(0,212,255,0.12); color: var(--cyan); border:1px solid rgba(0,212,255,0.3); }
+
+/* ══════════════════════════════════════════
+   MODAL DE ACCESO
+══════════════════════════════════════════ */
+.modal-overlay {
+  position: fixed; inset:0; z-index: 9999;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+.modal-overlay.hidden { display:none; }
+
+@keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+
+.modal-box {
+  background: linear-gradient(145deg, #070f1e, #0a1630);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 36px 32px;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  position: relative;
+  box-shadow: 0 0 60px rgba(212,160,23,0.15), 0 20px 60px rgba(0,0,0,0.6);
+  animation: slideUp 0.35s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+@keyframes slideUp { from{transform:translateY(40px);opacity:0;} to{transform:translateY(0);opacity:1;} }
+
+.modal-box::before {
+  content:'';
+  position:absolute; top:0; left:20px; right:20px; height:2px;
+  background: linear-gradient(90deg, transparent, var(--gold2), transparent);
+}
+
+.modal-seal {
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+  margin: 0 auto 18px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(212,160,23,0.08);
+  box-shadow: 0 0 20px rgba(212,160,23,0.3);
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: var(--gold2);
+}
+
+.modal-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--gold2);
+  letter-spacing: 3px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.modal-sub {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 3px;
+  color: var(--dim2);
+  margin-bottom: 26px;
+  text-transform: uppercase;
+}
+
+.modal-input-wrap {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.modal-input {
+  width: 100%;
+  background: #030810;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 48px 14px 18px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 1.2rem;
+  letter-spacing: 6px;
+  color: var(--cyan);
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.modal-input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 20px rgba(212,160,23,0.2);
+}
+
+.modal-input.error {
+  border-color: var(--red) !important;
+  box-shadow: 0 0 20px rgba(239,68,68,0.25) !important;
+  animation: shake 0.4s ease;
+}
+
+@keyframes shake {
+  0%,100%{transform:translateX(0);}
+  20%{transform:translateX(-8px);}
+  40%{transform:translateX(8px);}
+  60%{transform:translateX(-5px);}
+  80%{transform:translateX(5px);}
+}
+
+.modal-eye {
+  position: absolute; right:14px; top:50%;
+  transform:translateY(-50%);
+  cursor:pointer; font-size:1rem;
+  color:var(--dim2);
+  user-select:none;
+  transition:color 0.2s;
+}
+.modal-eye:hover { color:var(--gold2); }
+
+.modal-hint {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.58rem;
+  letter-spacing:2px;
+  color:var(--red);
+  min-height: 18px;
+  margin-bottom: 16px;
+  text-transform:uppercase;
+}
+
+.modal-btn {
+  width: 100%;
+  font-family: 'Cinzel', serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  padding: 14px;
+  border: none;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #7a5c00, var(--gold));
+  color: #000;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(212,160,23,0.35);
+  transition: all 0.2s;
+}
+
+.modal-btn:hover { background: linear-gradient(135deg, var(--gold), var(--gold2)); box-shadow:0 4px 30px rgba(212,160,23,0.55); }
+.modal-btn:active { transform:scale(0.98); }
+
+.modal-attempts {
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.55rem;
+  color:var(--dim);
+  letter-spacing:2px;
+  margin-top:12px;
+  text-transform:uppercase;
+}
+
+/* ── TIMER BANNER ── */
+.timer-banner {
+  position: fixed;
+  top: 0; left:0; right:0;
+  z-index: 9998;
+  background: linear-gradient(135deg, rgba(239,68,68,0.95), rgba(180,20,20,0.95));
+  backdrop-filter: blur(6px);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 20px rgba(239,68,68,0.4);
+  transform: translateY(-100%);
+  transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  border-bottom: 2px solid rgba(255,100,100,0.6);
+}
+
+.timer-banner.visible { transform: translateY(0); }
+
+.timer-left {
+  display: flex; align-items: center; gap: 10px;
+}
+
+.timer-icon { font-size: 1.2rem; animation: timerPulse 1s ease-in-out infinite; }
+@keyframes timerPulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.2);} }
+
+.timer-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.timer-val {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 0 15px rgba(255,255,255,0.5);
+  letter-spacing: 3px;
+  min-width: 70px;
+  text-align: right;
+}
+
+.timer-progress-bar {
+  position: absolute;
+  bottom: 0; left:0;
+  height: 3px;
+  background: rgba(255,255,255,0.6);
+  width: 100%;
+  transform-origin: left;
+  transition: width 1s linear;
+}
+
+/* ── EXPIRED OVERLAY ── */
+.expired-overlay {
+  position:fixed; inset:0; z-index:10000;
+  background:rgba(0,0,0,0.92);
+  backdrop-filter:blur(10px);
+  display:flex; align-items:center; justify-content:center;
+  flex-direction:column; gap:20px;
+  text-align:center; padding:20px;
+}
+.expired-overlay.hidden { display:none; }
+
+.expired-icon { font-size:4rem; animation:timerPulse 1s ease-in-out infinite; }
+.expired-title {
+  font-family:'Cinzel',serif;
+  font-size:1.5rem; font-weight:900;
+  color:var(--red);
+  text-shadow:0 0 30px rgba(239,68,68,0.5);
+  letter-spacing:3px;
+}
+.expired-sub {
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.7rem; letter-spacing:3px;
+  color:var(--dim2); text-transform:uppercase;
+}
+.expired-btn {
+  font-family:'Cinzel',serif;
+  font-size:0.8rem; font-weight:700;
+  letter-spacing:3px; text-transform:uppercase;
+  padding:14px 30px;
+  border:1px solid var(--red);
+  border-radius:6px;
+  background:rgba(239,68,68,0.1);
+  color:var(--red);
+  cursor:pointer;
+  transition:all 0.2s;
+}
+.expired-btn:hover { background:rgba(239,68,68,0.2); box-shadow:0 0 20px rgba(239,68,68,0.3); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ HEADER ═══════════ -->
+<header>
+  <div class="seal-wrap">
+    <div class="seal-dot"></div><div class="seal-dot"></div>
+    <div class="seal-dot"></div><div class="seal-dot"></div>
+    <div class="seal-dot"></div><div class="seal-dot"></div>
+    <div class="seal-dot"></div><div class="seal-dot"></div>
+    <div class="seal-ring"></div>
+    <div class="seal-ring-inner"></div>
+    <div class="seal-center">
+      <div class="seal-letters">VN</div>
+      <div class="seal-sub">ISTU</div>
+    </div>
+  </div>
+
+  <div class="h-title">Instituto Superior Tecnológico<br>Universitario Vida Nueva</div>
+  <div class="h-sub">Sistema de Control Neumático Industrial</div>
+  <div class="h-divider"></div>
+
+  <div class="clock-strip">
+    <div class="clock-item">
+      <span class="clock-icon">🕐</span>
+      <span class="clock-val" id="clockTime">--:--:--</span>
+    </div>
+    <div class="clock-item">
+      <span class="clock-icon">📅</span>
+      <span class="clock-day" id="clockDay">---</span>
+    </div>
+    <div class="clock-item">
+      <span class="clock-icon">📅</span>
+      <span class="clock-day" id="clockDate">--/--/----</span>
+    </div>
+  </div>
+
+  <div>
+    <div class="conn-badge">
+      <div class="conn-dot" id="connDot"></div>
+      <span id="connText">CONECTANDO...</span>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════ MAIN ═══════════ -->
+<main>
+
+  <!-- RELAY STATUS -->
+  <div class="relay-bar-title">ESTADO DE ELECTROVÁLVULAS</div>
+  <div class="relay-bar" id="relayBar">
+    <div class="rled" id="r0"><div class="rled-name">R1</div><div class="rled-light"></div><div class="rled-label">A+</div></div>
+    <div class="rled" id="r1"><div class="rled-name">R2</div><div class="rled-light"></div><div class="rled-label">A−</div></div>
+    <div class="rled" id="r2"><div class="rled-name">R3</div><div class="rled-light"></div><div class="rled-label">B+</div></div>
+    <div class="rled" id="r3"><div class="rled-name">R4</div><div class="rled-light"></div><div class="rled-label">B−</div></div>
+    <div class="rled" id="r4"><div class="rled-name">R5</div><div class="rled-light"></div><div class="rled-label">C+</div></div>
+    <div class="rled" id="r5"><div class="rled-name">R6</div><div class="rled-light"></div><div class="rled-label">C−</div></div>
+    <div class="rled" id="r6"><div class="rled-name">R7</div><div class="rled-light"></div><div class="rled-label">D+</div></div>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div class="status-row">
+    <div class="s-indicator">
+      <div class="s-dot" id="sDot"></div>
+      <span id="sText">STANDBY</span>
+    </div>
+    <div class="prog-wrap"><div class="prog-fill" id="progFill"></div></div>
+    <div class="step-txt" id="stepTxt">—</div>
+  </div>
+
+  <!-- SEQUENCES -->
+  <div class="sec-title">Seleccione una secuencia</div>
+  <div class="seq-grid">
+
+    <!-- SEQ 1 -->
+    <div class="seq-card s1">
+      <div class="seq-num">01</div>
+      <div class="seq-name">Secuencia Lineal</div>
+      <div class="seq-steps">
+        <span class="step-hl">AVANCE:</span> A+ → B+ → C+ → D+(1s)<br>
+        <span class="step-hl">RETORNO:</span> A− → B− → C− → D−(1s)<br>
+        <span style="color:var(--gold2)">↳ Cada acción: pulso + 1s intervalo</span>
+      </div>
+      <div class="seq-flow">
+        <div class="flow-block">A+</div><div class="flow-sep">→1s→</div>
+        <div class="flow-block">B+</div><div class="flow-sep">→1s→</div>
+        <div class="flow-block">C+</div><div class="flow-sep">→1s→</div>
+        <div class="flow-block">D+</div><div class="flow-sep">▸</div>
+        <div class="flow-block">A−</div><div class="flow-sep">→1s→</div>
+        <div class="flow-block">B−</div><div class="flow-sep">→1s→</div>
+        <div class="flow-block">C−</div><div class="flow-sep">→1s→</div>
+        <div class="flow-block">D−</div>
+      </div>
+      <button class="btn-seq s1" id="btn1" onclick="sendSequence(1)">▶ EJECUTAR SECUENCIA 1</button>
+    </div>
+
+    <!-- SEQ 2 -->
+    <div class="seq-card s2">
+      <div class="seq-num">02</div>
+      <div class="seq-name">Doble Avance</div>
+      <div class="seq-steps">
+        <span class="step-hl">CICLO 1:</span> A+ B+ C+ D+(1s) simultáneos<br>
+        <span class="step-hl">CICLO 2:</span> A+ B+ C+ D+(1s) simultáneos<br>
+        <span style="color:var(--gold2)">↳ Repetición del mismo patrón de avance</span>
+      </div>
+      <div class="seq-flow">
+        <div class="flow-block">A+B+C+D+</div>
+        <div class="flow-sep">→1s→</div>
+        <div class="flow-block">A+B+C+D+</div>
+      </div>
+      <button class="btn-seq s2" id="btn2" onclick="sendSequence(2)">▶ EJECUTAR SECUENCIA 2</button>
+    </div>
+
+    <!-- SEQ 3 -->
+    <div class="seq-card s3">
+      <div class="seq-num">03</div>
+      <div class="seq-name">Avance-Retorno Grupal</div>
+      <div class="seq-steps">
+        <span class="step-hl">AVANCE:</span> A+ B+ simultáneo / C+ D+ simultáneo<br>
+        <span class="step-hl">RETORNO:</span> A− B− C− D− simultáneos<br>
+        <span style="color:var(--gold2)">↳ Grupos separados por 1s</span>
+      </div>
+      <div class="seq-flow">
+        <div class="flow-block">A+B+</div>
+        <div class="flow-sep">→1s→</div>
+        <div class="flow-block">C+D+</div>
+        <div class="flow-sep">→1s→</div>
+        <div class="flow-block">A−B−C−D−</div>
+      </div>
+      <button class="btn-seq s3" id="btn3" onclick="sendSequence(3)">▶ EJECUTAR SECUENCIA 3</button>
+    </div>
+
+    <!-- SEQ 4 -->
+    <div class="seq-card s4">
+      <div class="seq-num">04</div>
+      <div class="seq-name">Pares Independientes</div>
+      <div class="seq-steps">
+        <span class="step-hl">PASO 1:</span> A+ B+ simultáneo<br>
+        <span class="step-hl">PASO 2:</span> A− B− simultáneo<br>
+        <span class="step-hl">PASO 3:</span> C+ D+ simultáneo<br>
+        <span class="step-hl">PASO 4:</span> C− D− simultáneo
+      </div>
+      <div class="seq-flow">
+        <div class="flow-block">A+B+</div>
+        <div class="flow-sep">→1s→</div>
+        <div class="flow-block">A−B−</div>
+        <div class="flow-sep">→1s→</div>
+        <div class="flow-block">C+D+</div>
+        <div class="flow-sep">→1s→</div>
+        <div class="flow-block">C−D−</div>
+      </div>
+      <button class="btn-seq s4" id="btn4" onclick="sendSequence(4)">▶ EJECUTAR SECUENCIA 4</button>
+    </div>
+
+  </div>
+
+  <!-- STOP / RESET -->
+  <div class="stop-bar">
+    <button class="btn-util btn-stop" id="btnStop" onclick="sendStop()" disabled>■ DETENER EMERGENCIA</button>
+    <button class="btn-util btn-reset" onclick="sendReset()">↺ RESET SISTEMA</button>
+  </div>
+
+  <!-- LOG -->
+  <div class="log-box" id="logBox">
+    <div class="le sys">▶ Sistema ISTU Vida Nueva — Iniciando...</div>
+  </div>
+
+</main>
+
+<!-- ═══════════ TIMER BANNER (acceso temporal) ═══════════ -->
+<div class="timer-banner" id="timerBanner">
+  <div class="timer-left">
+    <span class="timer-icon">⏱</span>
+    <div>
+      <div class="timer-label">Sesión temporal activa</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:0.5rem;letter-spacing:2px;color:rgba(255,255,255,0.6);margin-top:2px;">ACCESO POR QR · ISTU VIDA NUEVA</div>
+    </div>
+  </div>
+  <div class="timer-val" id="timerVal">03:00</div>
+  <div class="timer-progress-bar" id="timerBar"></div>
+</div>
+
+<!-- ═══════════ MODAL INGRESO DE CLAVE ═══════════ -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <div class="modal-seal">VN</div>
+    <div class="modal-title">Acceso Requerido</div>
+    <div class="modal-sub">Instituto Vida Nueva — Control Neumático</div>
+
+    <div class="modal-input-wrap">
+      <input
+        type="password"
+        id="modalInput"
+        class="modal-input"
+        maxlength="10"
+        placeholder="• • • • •"
+        autocomplete="off"
+        onkeydown="if(event.key==='Enter') checkPassword()"
+      />
+      <span class="modal-eye" id="eyeBtn" onclick="toggleEye()">👁</span>
+    </div>
+
+    <div class="modal-hint" id="modalHint"></div>
+
+    <button class="modal-btn" onclick="checkPassword()">🔓 INGRESAR AL SISTEMA</button>
+
+    <div class="modal-attempts" id="modalAttempts">INTENTOS RESTANTES: 3</div>
+  </div>
+</div>
+
+<!-- ═══════════ SESIÓN EXPIRADA ═══════════ -->
+<div class="expired-overlay hidden" id="expiredOverlay">
+  <div class="expired-icon">🔒</div>
+  <div class="expired-title">SESIÓN EXPIRADA</div>
+  <div class="expired-sub">Tu acceso temporal de 3 minutos ha finalizado</div>
+  <div style="font-family:'Share Tech Mono',monospace;font-size:0.62rem;color:var(--dim);letter-spacing:2px;">Escanea el código QR nuevamente para obtener acceso</div>
+  <button class="expired-btn" onclick="location.reload()">↺ REINTENTAR ACCESO</button>
+</div>
+
+<!-- ═══════════ QR SECTION ═══════════ -->
+<div class="qr-section">
+  <div class="qr-card">
+    <div class="qr-box-wrap">
+      <div class="qr-frame">
+        <div class="qr-corner tl"></div>
+        <div class="qr-corner tr"></div>
+        <div class="qr-corner bl"></div>
+        <div class="qr-corner br"></div>
+        <div id="qrCanvas"></div>
+      </div>
+      <div class="qr-badge">ESCANEAR PARA ACCEDER</div>
+    </div>
+
+    <div class="qr-info">
+      <div class="qr-title">Acceso por QR</div>
+      <div class="qr-desc">
+        Comparte el acceso a este panel de control de forma segura.
+        Escanea el código con cualquier dispositivo móvil.
+      </div>
+
+      <div class="qr-steps">
+        <div class="qr-step">
+          <div class="qr-step-num">1</div>
+          <span>Escanea el código QR con tu cámara</span>
+        </div>
+        <div class="qr-step">
+          <div class="qr-step-num">2</div>
+          <span>Ingresa la clave de acceso cuando se solicite</span>
+        </div>
+        <div class="qr-step">
+          <div class="qr-step-num">3</div>
+          <span>Obtienes 3 minutos de acceso al sistema</span>
+        </div>
+        <div class="qr-step">
+          <div class="qr-step-num">4</div>
+          <span>Al expirar, escanea nuevamente para renovar</span>
+        </div>
+      </div>
+
+      <div class="qr-meta">
+        <div class="qr-meta-chip chip-red">⏱ 3 MIN ACCESO</div>
+        <div class="qr-meta-chip chip-green">🔒 CLAVE REQUERIDA</div>
+        <div class="qr-meta-chip chip-cyan">🌐 CUALQUIER RED</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Instituto Superior Tecnológico Universitario Vida Nueva &nbsp;·&nbsp;
+  Sistema de Control Neumático v2.0 &nbsp;·&nbsp; Firebase + GitHub Pages
+</footer>
+
+<!-- ═══════════ SCRIPTS ═══════════ -->
+<script>
+/* ─────────────────────────────────────────────
+   FIREBASE CONFIG — reemplaza con tus datos
+───────────────────────────────────────────── */
+const firebaseConfig = {
+  apiKey:            "AIzaSyBypb_9jmF0OEdKmEUs9LzzS6kAQIeqGWg",
+  authDomain:        "proyecto1-a1809.firebaseapp.com",
+  databaseURL:       "https://proyecto1-a1809-default-rtdb.firebaseio.com",
+  projectId:         "proyecto1-a1809",
+  storageBucket:     "proyecto1-a1809.firebasestorage.app",
+  messagingSenderId: "782756197885",
+  appId:             "1:782756197885:web:220802e265eb6cb6379594"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const cmdRef    = db.ref('control/command');
+const statusRef = db.ref('control/status');
+const relaysRef = db.ref('control/relays');
+
+/* ─────────────────────────────────────────────
+   RELOJ EN TIEMPO REAL
+───────────────────────────────────────────── */
+const DAYS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function updateClock() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2,'0');
+  const mm = String(now.getMinutes()).padStart(2,'0');
+  const ss = String(now.getSeconds()).padStart(2,'0');
+  const dd = String(now.getDate()).padStart(2,'0');
+  const mo = String(now.getMonth()+1).padStart(2,'0');
+  const yy = now.getFullYear();
+
+  document.getElementById('clockTime').textContent = `${hh}:${mm}:${ss}`;
+  document.getElementById('clockDay').textContent  = DAYS[now.getDay()];
+  document.getElementById('clockDate').textContent = `${dd}/${mo}/${yy}`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ─────────────────────────────────────────────
+   UI HELPERS
+───────────────────────────────────────────── */
+const RELAY_NAMES = ['A+','A−','B+','B−','C+','C−','D+'];
+
+function setRelay(idx, state) {
+  const el = document.getElementById('r'+idx);
+  if (!el) return;
+  el.className = 'rled' + (state ? ' on' : '');
+}
+
+function allRelaysOff() {
+  for (let i=0;i<7;i++) setRelay(i,false);
+}
+
+function log(msg, cls='') {
+  const box = document.getElementById('logBox');
+  const ts = new Date().toLocaleTimeString('es',{hour12:false});
+  box.innerHTML += `<div class="le ${cls}">[${ts}] ${msg}</div>`;
+  box.scrollTop = box.scrollHeight;
+}
+
+function setStatus(txt, dotCls, progColor) {
+  document.getElementById('sText').textContent = txt;
+  const dot = document.getElementById('sDot');
+  dot.className = 's-dot ' + (dotCls||'');
+  const pf = document.getElementById('progFill');
+  pf.style.background = progColor || 'var(--cyan)';
+}
+
+function setProgress(pct) {
+  document.getElementById('progFill').style.width = pct + '%';
+}
+
+function setStep(t) {
+  document.getElementById('stepTxt').textContent = t;
+}
+
+const SEQ_COLORS = ['','var(--seq1)','var(--seq2)','var(--seq3)','var(--seq4)'];
+const SEQ_DOT    = ['','s1-c','s2-c','s3-c','s4-c'];
+const SEQ_LOG    = ['','s1c','s2c','s3c','s4c'];
+let running = false;
+
+function setBusy(busy) {
+  running = busy;
+  ['btn1','btn2','btn3','btn4'].forEach(id => document.getElementById(id).disabled = busy);
+  document.getElementById('btnStop').disabled = !busy;
+}
+
+/* ─────────────────────────────────────────────
+   FIREBASE — Escuchar estado del ESP32
+───────────────────────────────────────────── */
+let connectedOnce = false;
+
+db.ref('.info/connected').on('value', snap => {
+  const online = snap.val();
+  const dot  = document.getElementById('connDot');
+  const text = document.getElementById('connText');
+  if (online) {
+    dot.className  = 'conn-dot online';
+    text.textContent = 'FIREBASE CONECTADO';
+    if (!connectedOnce) { log('Firebase conectado correctamente.','sys'); connectedOnce = true; }
+  } else {
+    dot.className  = 'conn-dot offline';
+    text.textContent = 'SIN CONEXIÓN';
+    log('Firebase desconectado.','err');
+  }
+});
+
+// Escuchar estado de relés desde ESP32
+relaysRef.on('value', snap => {
+  const val = snap.val();
+  if (!val) return;
+  for (let i=0;i<7;i++) setRelay(i, !!val['r'+(i+1)]);
+});
+
+// Escuchar status
+statusRef.on('value', snap => {
+  const val = snap.val();
+  if (!val) return;
+
+  const seq  = val.sequence  || 0;
+  const step = val.step      || '';
+  const pct  = val.progress  || 0;
+  const busy = val.running   || false;
+
+  setBusy(busy);
+  setProgress(pct);
+  setStep(step || '—');
+
+  if (busy && seq>0) {
+    setStatus(`SECUENCIA ${seq} — ${step}`, SEQ_DOT[seq]+' active', SEQ_COLORS[seq]);
+  } else {
+    setStatus('STANDBY', '', 'var(--cyan)');
+    if (!busy && pct===100) { log('Secuencia completada ✓','ok'); setProgress(100); }
+  }
+});
+
+/* ─────────────────────────────────────────────
+   ENVIAR COMANDOS A ESP32 VÍA FIREBASE
+───────────────────────────────────────────── */
+function sendSequence(num) {
+  if (running) return;
+  cmdRef.set({ cmd: 'SEQ', seq: num, ts: Date.now() });
+  setProgress(0);
+  log(`▶ Enviando SECUENCIA ${num} al ESP32...`, SEQ_LOG[num]);
+  setStatus(`ENVIANDO SEQ ${num}...`, SEQ_DOT[num], SEQ_COLORS[num]);
+}
+
+function sendStop() {
+  cmdRef.set({ cmd: 'STOP', ts: Date.now() });
+  log('⚠ STOP enviado.','err');
+  setStatus('DETENIDO','','var(--red)');
+}
+
+function sendReset() {
+  cmdRef.set({ cmd: 'RESET', ts: Date.now() });
+  allRelaysOff();
+  setProgress(0); setStep('—');
+  setStatus('STANDBY','','var(--cyan)');
+  log('↺ Reset enviado.','sys');
+}
+
+/* ═══════════════════════════════════════════════════════
+   SISTEMA DE ACCESO POR QR + CLAVE + TEMPORIZADOR
+═══════════════════════════════════════════════════════ */
+
+const ACCESS_PASSWORD = '12345';
+const ACCESS_DURATION = 3 * 60; // 3 minutos en segundos
+const SESSION_KEY     = 'istu_vn_session';
+
+let timerInterval  = null;
+let secondsLeft    = ACCESS_DURATION;
+let attemptsLeft   = 3;
+let sessionGranted = false;
+
+/* ── Verificar si ya hay sesión válida guardada en memoria ── */
+function checkExistingSession() {
+  try {
+    const saved = sessionStorage.getItem(SESSION_KEY);
+    if (saved) {
+      const data = JSON.parse(saved);
+      const elapsed = Math.floor((Date.now() - data.startTime) / 1000);
+      const remaining = ACCESS_DURATION - elapsed;
+      if (remaining > 0) {
+        grantAccess(remaining);
+        return true;
+      }
+    }
+  } catch(e) {}
+  return false;
+}
+
+/* ── Determinar si el usuario llegó por QR (visitante) o es anfitrión ── */
+function arrivedViaQR() {
+  // Solo es visitante por QR si la URL tiene el parámetro ?qr=1
+  return window.location.search.includes('qr=1');
+}
+
+function isHost() {
+  // El anfitrión accede directamente sin ?qr=1 → nunca se le pide clave
+  return !window.location.search.includes('qr=1');
+}
+
+/* ── Mostrar u ocultar el modal de clave ── */
+function showAccessModal() {
+  document.getElementById('modalOverlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('modalInput').focus(), 400);
+}
+
+function hideModal() {
+  document.getElementById('modalOverlay').classList.add('hidden');
+}
+
+/* ── Toggle ver/ocultar contraseña ── */
+function toggleEye() {
+  const input = document.getElementById('modalInput');
+  const eye   = document.getElementById('eyeBtn');
+  if (input.type === 'password') {
+    input.type = 'text';
+    eye.textContent = '🙈';
+  } else {
+    input.type = 'password';
+    eye.textContent = '👁';
+  }
+}
+
+/* ── Verificar clave ── */
+function checkPassword() {
+  const input = document.getElementById('modalInput');
+  const hint  = document.getElementById('modalHint');
+  const val   = input.value.trim();
+
+  if (!val) {
+    showError('INGRESA LA CLAVE DE ACCESO');
+    return;
+  }
+
+  if (val === ACCESS_PASSWORD) {
+    hint.textContent = '';
+    hideModal();
+    grantAccess(ACCESS_DURATION);
+    // Guardar sesión en sessionStorage (se borra al cerrar pestaña)
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ startTime: Date.now() }));
+  } else {
+    attemptsLeft--;
+    input.value = '';
+    if (attemptsLeft <= 0) {
+      lockout();
+    } else {
+      showError(`CLAVE INCORRECTA — ${attemptsLeft} INTENTO${attemptsLeft>1?'S':''} RESTANTE${attemptsLeft>1?'S':''}`);
+      document.getElementById('modalAttempts').textContent = `INTENTOS RESTANTES: ${attemptsLeft}`;
+    }
+  }
+}
+
+function showError(msg) {
+  const input = document.getElementById('modalInput');
+  const hint  = document.getElementById('modalHint');
+  hint.textContent = msg;
+  input.classList.add('error');
+  setTimeout(() => input.classList.remove('error'), 500);
+}
+
+function lockout() {
+  const box = document.querySelector('.modal-box');
+  box.innerHTML = `
+    <div style="font-size:3rem;margin-bottom:16px;">🚫</div>
+    <div class="modal-title" style="color:var(--red);">ACCESO BLOQUEADO</div>
+    <div class="modal-sub">Demasiados intentos fallidos</div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:0.65rem;color:var(--dim2);letter-spacing:2px;margin-top:12px;">
+      Escanea el código QR nuevamente para reintentar
+    </div>
+    <button class="modal-btn" style="margin-top:20px;background:rgba(239,68,68,0.2);color:var(--red);border:1px solid var(--red);" onclick="location.reload()">
+      ↺ VOLVER A INTENTAR
+    </button>
+  `;
+}
+
+/* ── Conceder acceso y arrancar temporizador ── */
+function grantAccess(duration) {
+  sessionGranted = true;
+  secondsLeft    = duration;
+
+  // Mostrar banner del temporizador
+  const banner = document.getElementById('timerBanner');
+  banner.classList.add('visible');
+
+  // Empujar el contenido hacia abajo para que no tape nada
+  document.querySelector('header').style.marginTop = '48px';
+
+  updateTimerDisplay();
+
+  timerInterval = setInterval(() => {
+    secondsLeft--;
+    updateTimerDisplay();
+
+    if (secondsLeft <= 0) {
+      clearInterval(timerInterval);
+      expireSession();
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const m = String(Math.floor(secondsLeft / 60)).padStart(2,'0');
+  const s = String(secondsLeft % 60).padStart(2,'0');
+  document.getElementById('timerVal').textContent = `${m}:${s}`;
+
+  // Barra de progreso
+  const pct = (secondsLeft / ACCESS_DURATION) * 100;
+  document.getElementById('timerBar').style.width = pct + '%';
+
+  // Cambiar color cuando queda poco tiempo
+  const banner = document.getElementById('timerBanner');
+  if (secondsLeft <= 30) {
+    banner.style.background = 'linear-gradient(135deg, rgba(239,68,68,1), rgba(180,20,20,1))';
+    document.getElementById('timerVal').style.animation = 'timerPulse 0.5s ease-in-out infinite';
+  } else if (secondsLeft <= 60) {
+    banner.style.background = 'linear-gradient(135deg, rgba(245,158,11,0.95), rgba(180,100,0,0.95))';
+  }
+}
+
+/* ── Sesión expirada ── */
+function expireSession() {
+  sessionGranted = false;
+  sessionStorage.removeItem(SESSION_KEY);
+
+  // Bloquear botones de control
+  ['btn1','btn2','btn3','btn4','btnStop'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = true;
+  });
+
+  // Mostrar overlay de expiración
+  document.getElementById('expiredOverlay').classList.remove('hidden');
+}
+
+/* ══════════════════════════════════════════
+   GENERAR CÓDIGO QR CON LA URL ACTUAL
+══════════════════════════════════════════ */
+function generateQR() {
+  // La URL base siempre limpia (sin parámetros previos)
+  const baseUrl = window.location.origin + window.location.pathname;
+  // El QR siempre apunta a la URL con ?qr=1  (visitante)
+  // El anfitrión usa la URL sin ese parámetro
+  const qrUrl = baseUrl + '?qr=1';
+
+  new QRCode(document.getElementById('qrCanvas'), {
+    text:         qrUrl,
+    width:        140,
+    height:       140,
+    colorDark:    '#000000',
+    colorLight:   '#ffffff',
+    correctLevel: QRCode.CorrectLevel.H
+  });
+}
+
+/* ══════════════════════════════════════════
+   INICIALIZAR SISTEMA DE ACCESO
+══════════════════════════════════════════ */
+window.addEventListener('load', () => {
+  generateQR();
+
+  if (isHost()) {
+    // ── ANFITRIÓN: acceso directo sin ?qr=1 ──
+    // Nunca se le pide clave. Acceso total e inmediato.
+    // El timer y el modal nunca aparecen.
+    console.log('[ISTU] Modo Anfitrión — acceso completo sin restricción.');
+
+  } else {
+    // ── VISITANTE: llegó escaneando el QR (?qr=1) ──
+    // Debe ingresar la clave. Si ya tiene sesión válida, se renueva.
+    if (!checkExistingSession()) {
+      showAccessModal();
+    }
+  }
+});
+</script>
+</body>
+</html>
